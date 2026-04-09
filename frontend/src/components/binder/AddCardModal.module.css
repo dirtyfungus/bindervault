@@ -1,0 +1,145 @@
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 500; padding: 20px;
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%; max-width: 520px;
+  display: flex; flex-direction: column;
+  max-height: 90vh;
+}
+
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.title { font-size: 14px; font-weight: 500; color: var(--white); }
+
+.closeBtn {
+  background: none; border: none; color: var(--grey);
+  display: flex; align-items: center; padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.closeBtn:hover { color: var(--white); }
+
+.body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.searchRow {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.searchInput {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--white); font-size: 13px;
+}
+.searchInput::placeholder { color: var(--grey-dim); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.8s linear infinite; }
+
+.results {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.resultItem {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; width: 100%;
+  background: none; border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--white); text-align: left;
+  transition: background 0.12s;
+}
+.resultItem:last-child { border-bottom: none; }
+.resultItem:hover { background: var(--card); }
+
+.resultThumb {
+  width: 32px; height: 45px;
+  object-fit: cover; border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.resultInfo { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.resultName { font-size: 13px; font-weight: 500; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.resultMeta { font-size: 11px; color: var(--grey); }
+.resultPrice { font-size: 11px; color: var(--teal); }
+
+.noResults { font-size: 13px; color: var(--grey); text-align: center; padding: 16px 0; }
+
+.selectedConfig {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+
+.selectedCard {
+  display: flex; align-items: flex-start; gap: 12px;
+  margin-bottom: 16px;
+}
+
+.selectedImg { width: 56px; height: 78px; object-fit: cover; border-radius: 5px; flex-shrink: 0; }
+
+.selectedInfo { flex: 1; }
+.selectedName { font-size: 14px; font-weight: 500; color: var(--white); margin-bottom: 3px; }
+.selectedSet { font-size: 11px; color: var(--grey); margin-bottom: 4px; }
+.selectedPrice { font-size: 13px; color: var(--teal); font-weight: 500; }
+
+.clearSelected {
+  background: none; border: none; color: var(--grey);
+  padding: 4px; margin-left: auto; flex-shrink: 0;
+  transition: color 0.15s; display: flex; align-items: center;
+}
+.clearSelected:hover { color: var(--danger); }
+
+.configRow {
+  display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+}
+
+.configField { display: flex; flex-direction: column; gap: 6px; }
+.configLabel { font-size: 11px; color: var(--grey); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.conditionGroup { display: flex; gap: 4px; }
+.condBtn {
+  padding: 5px 9px; border-radius: var(--radius-sm);
+  background: var(--panel); border: 1px solid var(--border);
+  color: var(--grey); font-size: 12px;
+  transition: all 0.12s;
+}
+.condBtn:hover { border-color: var(--border-hover); color: var(--white-dim); }
+.condActive { background: var(--teal-glow) !important; border-color: var(--teal-border) !important; color: var(--teal) !important; }
+
+.qtyInput { width: 64px; }
+
+.foilToggle {
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  background: var(--panel); border: 1px solid var(--border);
+  color: var(--grey); font-size: 12px;
+  transition: all 0.12s;
+}
+.foilActive { background: var(--teal-glow); border-color: var(--teal-border); color: var(--teal); }
+
+.footer {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}

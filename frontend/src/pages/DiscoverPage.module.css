@@ -1,0 +1,66 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 28px;
+  flex-shrink: 0;
+}
+
+.title { font-size: 20px; font-weight: 600; color: var(--white); margin-bottom: 6px; }
+.subtitle { font-size: 13px; color: var(--grey); margin-bottom: 20px; }
+
+.searchBox {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px;
+  max-width: 480px;
+}
+.searchInput {
+  background: none; border: none; outline: none;
+  color: var(--white); font-size: 14px; flex: 1;
+}
+.searchInput::placeholder { color: var(--grey-dim); }
+
+.content { flex: 1; overflow-y: auto; padding: 24px 28px; }
+
+.hint { font-size: 13px; color: var(--grey); text-align: center; padding: 60px 0; }
+.loading { font-size: 13px; color: var(--grey); padding: 20px 0; }
+.empty { font-size: 13px; color: var(--grey); text-align: center; padding: 40px 0; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.userCard {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.userCard:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+
+.userAvatar {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 600; color: var(--navy);
+  flex-shrink: 0;
+}
+
+.userInfo { flex: 1; min-width: 0; }
+.userName { font-size: 14px; font-weight: 500; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.userHandle { font-size: 11px; color: var(--grey); margin-top: 2px; }
+.userLocation { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--grey-dim); margin-top: 3px; }
+
+.userStats { display: flex; gap: 12px; flex-shrink: 0; }
+.userStat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.statNum { font-size: 13px; font-weight: 600; color: var(--white); }
+.statLbl { font-size: 10px; color: var(--grey); }

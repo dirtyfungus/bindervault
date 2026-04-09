@@ -1,0 +1,110 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:       #0d1117;
+  --panel:      #161c26;
+  --card:       #1e2736;
+  --border:     #2a3a52;
+  --border-hover: #3d5478;
+  --teal:       #00d4c8;
+  --teal-dim:   #00a89e;
+  --teal-glow:  rgba(0, 212, 200, 0.12);
+  --teal-border: rgba(0, 212, 200, 0.35);
+  --grey:       #8a9bb5;
+  --grey-dim:   #5a6a80;
+  --white:      #e8edf5;
+  --white-dim:  #a0aec0;
+  --rare:       #c9a227;
+  --mythic:     #d46e2a;
+  --uncommon:   #8faab8;
+  --common:     #9aa5b1;
+  --danger:     #e05050;
+  --danger-bg:  rgba(224, 80, 80, 0.15);
+  --success:    #48bb78;
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--navy);
+  color: var(--white);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+/* Utility */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* Shared component styles */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 16px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500; border: none;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn:hover { opacity: 0.85; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--teal); color: var(--navy); }
+.btn-secondary { background: var(--card); border: 1px solid var(--border); color: var(--white-dim); }
+.btn-danger { background: var(--danger-bg); border: 1px solid rgba(224,80,80,0.3); color: var(--danger); }
+.btn-ghost { background: transparent; color: var(--grey); border: 1px solid var(--border); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Card component */
+.surface {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* Input */
+.input {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  color: var(--white);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--teal-border); }
+.input::placeholder { color: var(--grey-dim); }
+
+/* Badge */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 11px; font-weight: 500;
+}
+.badge-teal { background: var(--teal-glow); border: 1px solid var(--teal-border); color: var(--teal); }
+.badge-rare { background: rgba(201,162,39,0.15); border: 1px solid rgba(201,162,39,0.3); color: var(--rare); }
+.badge-mythic { background: rgba(212,110,42,0.15); border: 1px solid rgba(212,110,42,0.3); color: var(--mythic); }
+.badge-grey { background: rgba(138,155,181,0.15); border: 1px solid rgba(138,155,181,0.2); color: var(--grey); }
+
+/* Rarity dot */
+.rarity-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.rarity-mythic { background: var(--mythic); }
+.rarity-rare { background: var(--rare); }
+.rarity-uncommon { background: var(--uncommon); }
+.rarity-common { background: var(--common); }
+
+/* Fade-in animation */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.2s ease; }
