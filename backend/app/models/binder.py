@@ -27,7 +27,7 @@ class BinderEntry(Base):
     rarity: Mapped[str] = mapped_column(String(16), nullable=True)
     image_uri: Mapped[str] = mapped_column(Text, nullable=True)
     condition: Mapped[str] = mapped_column(
-        Enum(Condition, name="condition_enum"),
+        Enum(Condition, name="condition_enum", values_callable=lambda x: [e.value for e in x]),
         default=Condition.near_mint,
         nullable=False,
     )
@@ -57,7 +57,7 @@ class WantListEntry(Base):
     set_code: Mapped[str] = mapped_column(String(10), nullable=True)
     image_uri: Mapped[str] = mapped_column(Text, nullable=True)
     max_condition: Mapped[str] = mapped_column(
-        Enum(Condition, name="condition_enum"),
+        Enum(Condition, name="condition_enum", values_callable=lambda x: [e.value for e in x]),
         default=Condition.near_mint,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
