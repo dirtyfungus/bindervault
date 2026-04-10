@@ -191,4 +191,8 @@ docker compose down -v
 - Implement trade specific chat as well as user to user chat
 - Implement geolocation auto complete for my location and Meetup location
 - Add "Use my location" as an alternative when signing up (Make it city specific, no actual address)
+- On "Discover" be able to lookup specific cards available for trading
+- Be able to mark cards as "not for trade" (This will hide the card from people looking at your profile, as well as the above)
+
+
 
