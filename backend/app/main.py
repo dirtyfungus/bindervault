@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import subprocess
 
 from app.core.config import settings
 from app.core.redis import init_redis, close_redis
@@ -9,6 +10,7 @@ from app.api.routes import auth, users, binder, trades, scryfall, notifications,
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    subprocess.run(["alembic", "upgrade", "head"], check=True, cwd="/app")
     await init_redis()
     yield
     await close_redis()

@@ -6,6 +6,7 @@ Create Date: 2025-01-01 00:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import ENUM as PgEnum
 
 revision = "0001"
 down_revision = None
@@ -46,7 +47,7 @@ def upgrade() -> None:
         sa.UniqueConstraint("follower_id", "following_id"),
     )
 
-    condition_enum = sa.Enum("M", "NM", "LP", "MP", "HP", "D", name="condition_enum")
+    condition_enum = PgEnum("M", "NM", "LP", "MP", "HP", "D", name="condition_enum", create_type=False)
     condition_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
@@ -87,13 +88,13 @@ def upgrade() -> None:
     )
     op.create_index("ix_want_list_entries_user_id", "want_list_entries", ["user_id"], unique=False)
 
-    offer_status_enum = sa.Enum(
+    offer_status_enum = PgEnum(
         "pending", "countered", "accepted", "declined", "cancelled", "completed",
-        name="offer_status_enum"
+        name="offer_status_enum", create_type=False,
     )
     offer_status_enum.create(op.get_bind(), checkfirst=True)
 
-    delivery_enum = sa.Enum("lgs", "ship", name="delivery_method_enum")
+    delivery_enum = PgEnum("lgs", "ship", name="delivery_method_enum", create_type=False)
     delivery_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(

@@ -180,3 +180,15 @@ docker compose down -v
 - Collection stats and portfolio value tracking
 - MTGGoldfish / EDHREC integration for format legality
 - Mobile app (React Native, same API)
+
+## TODO
+
+- On the card offer, add an option to request extra money on the deal
+- Add "Add friend" or "follow" to be able to quickly visualize your friend's binders
+- Currently counter offer doesn't allow for editing the trade in any way + visuals are bugged a bit. When this happens both users get stuck in limbo for this trade, since there's no way of the other user accepting/declining (Maybe auto accept from the requester side if there are no counter offers)
+- Implement card reserve/warning when a card is already involved in a trade and someone wants another trade
+- After accepting trade you cannot visualize the meetup information if you're the one requesting the trade
+- Implement trade specific chat as well as user to user chat
+- Implement geolocation auto complete for my location and Meetup location
+- Add "Use my location" as an alternative when signing up (Make it city specific, no actual address)
+
