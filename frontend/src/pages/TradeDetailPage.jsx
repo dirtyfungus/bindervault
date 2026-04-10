@@ -7,6 +7,7 @@ import { ArrowLeft, Store, Package, CheckCircle } from 'lucide-react'
 import { useAuthStore } from '../store/auth'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
+import CounterOfferModal from '../components/trade/CounterOfferModal'
 
 export default function TradeDetailPage() {
   const { offerId } = useParams()
@@ -14,6 +15,7 @@ export default function TradeDetailPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
 
+  const [showCounterModal, setShowCounterModal] = useState(false)
   const [lgsName, setLgsName] = useState('')
   const [lgsAddress, setLgsAddress] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
@@ -131,7 +133,7 @@ export default function TradeDetailPage() {
           {offer.status === 'pending' && !isSender && (
             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
               <button className="btn btn-primary" onClick={() => respondMutation.mutate('accept')}>Accept trade</button>
-              <button className="btn btn-ghost" onClick={() => toast('Counter offer: adjust the items and send a new offer')}>Counter</button>
+              <button className="btn btn-ghost" onClick={() => setShowCounterModal(true)}>Counter</button>
               <button className="btn btn-danger" onClick={() => respondMutation.mutate('decline')}>Decline</button>
             </div>
           )}
@@ -217,6 +219,10 @@ export default function TradeDetailPage() {
         )}
       </div>
     </div>
+
+    {showCounterModal && (
+      <CounterOfferModal offer={offer} onClose={() => setShowCounterModal(false)} />
+    )}
   )
 }
 

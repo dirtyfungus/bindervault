@@ -185,7 +185,8 @@ docker compose down -v
 
 - On the card offer, add an option to request extra money on the deal
 - Add "Add friend" or "follow" to be able to quickly visualize your friend's binders
-- Currently counter offer doesn't allow for editing the trade in any way + visuals are bugged a bit. When this happens both users get stuck in limbo for this trade, since there's no way of the other user accepting/declining (Maybe auto accept from the requester side if there are no counter offers)
+- Currently counter offer doesn't allow for editing the trade in any way + visuals are bugged a bit. 
+- ~~We cannot accept the deal from the requesters' side, When the receiver accepts the trade, both users get stuck in limbo for this trade, since there's no way of the other user accepting/declining (Maybe auto accept from the requester side if there are no counter offers)~~
 - Implement card reserve/warning when a card is already involved in a trade and someone wants another trade
 - After accepting trade you cannot visualize the meetup information if you're the one requesting the trade
 - Implement trade specific chat as well as user to user chat
@@ -193,6 +194,8 @@ docker compose down -v
 - Add "Use my location" as an alternative when signing up (Make it city specific, no actual address)
 - On "Discover" be able to lookup specific cards available for trading
 - Be able to mark cards as "not for trade" (This will hide the card from people looking at your profile, as well as the above)
+- Implement Counter-offer options: When countering a trade, users can propose multiple alternative offers, each with its own set of cards/amounts. Countering is limited to modifying your own side of the trade, to change the other party's cards, a new trade must be initiated.
+- Notification icons don't go away
 
 
 

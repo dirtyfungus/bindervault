@@ -16,6 +16,38 @@ from app.core.redis import get_redis
 router = APIRouter()
 
 
+async def _transfer_one(entry: BinderEntry, new_owner_id: int, db: AsyncSession):
+    if entry.quantity > 1:
+        entry.quantity -= 1
+        existing = await db.scalar(
+            select(BinderEntry).where(
+                BinderEntry.user_id == new_owner_id,
+                BinderEntry.scryfall_id == entry.scryfall_id,
+                BinderEntry.condition == entry.condition,
+                BinderEntry.foil == entry.foil,
+            )
+        )
+        if existing:
+            existing.quantity += 1
+        else:
+            db.add(BinderEntry(
+                user_id=new_owner_id,
+                scryfall_id=entry.scryfall_id,
+                card_name=entry.card_name,
+                set_code=entry.set_code,
+                set_name=entry.set_name,
+                collector_number=entry.collector_number,
+                rarity=entry.rarity,
+                image_uri=entry.image_uri,
+                condition=entry.condition,
+                quantity=1,
+                foil=entry.foil,
+                price_usd=entry.price_usd,
+            ))
+    else:
+        entry.user_id = new_owner_id
+
+
 def offer_out(offer: TradeOffer):
     return {
         "id": offer.id,
@@ -186,7 +218,7 @@ async def incoming_offers(
         )
         .where(
             TradeOffer.receiver_id == current_user.id,
-            TradeOffer.status.in_([OfferStatus.pending, OfferStatus.countered]),
+            TradeOffer.status.in_([OfferStatus.pending, OfferStatus.countered, OfferStatus.accepted]),
         )
         .order_by(TradeOffer.created_at.desc())
     )
@@ -208,7 +240,7 @@ async def outgoing_offers(
         )
         .where(
             TradeOffer.sender_id == current_user.id,
-            TradeOffer.status.in_([OfferStatus.pending, OfferStatus.countered]),
+            TradeOffer.status.in_([OfferStatus.pending, OfferStatus.countered, OfferStatus.accepted]),
         )
         .order_by(TradeOffer.created_at.desc())
     )
@@ -291,6 +323,18 @@ async def respond_to_offer(
             sender.trade_count += 1
         if receiver:
             receiver.trade_count += 1
+        is_counter = offer.counter_of_id is not None
+        target_dest = offer.receiver_id if is_counter else offer.sender_id
+        offered_dest = offer.sender_id if is_counter else offer.receiver_id
+        if offer.target_entry_id:
+            target = await db.scalar(select(BinderEntry).where(BinderEntry.id == offer.target_entry_id))
+            if target:
+                await _transfer_one(target, target_dest, db)
+        for item in offer.offered_items:
+            if item.binder_entry_id:
+                entry = await db.scalar(select(BinderEntry).where(BinderEntry.id == item.binder_entry_id))
+                if entry:
+                    await _transfer_one(entry, offered_dest, db)
 
     else:
         raise HTTPException(400, "Invalid action")
@@ -329,7 +373,7 @@ async def counter_offer(
 
     for eid in body.offered_entry_ids:
         entry = await db.scalar(
-            select(BinderEntry).where(BinderEntry.id == eid, BinderEntry.user_id == current_user.id)
+            select(BinderEntry).where(BinderEntry.id == eid, BinderEntry.user_id == original.sender_id)
         )
         if entry:
             db.add(TradeOfferItem(
