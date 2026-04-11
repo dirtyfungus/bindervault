@@ -180,6 +180,10 @@ export default function TradeDetailPage() {
                     </button>
                   )}
                 </div>
+              ) : isSender ? (
+                <div style={{ fontSize: 13, color: 'var(--grey)', padding: '20px 0', textAlign: 'center' }}>
+                  ⏳ Waiting for {other?.handle} to set up the meetup details.
+                </div>
               ) : (
                 <div>
                   <p style={{ fontSize: 13, color: 'var(--grey)', marginBottom: 16 }}>Set up how you'll exchange cards.</p>
