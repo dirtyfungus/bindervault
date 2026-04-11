@@ -119,6 +119,15 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS trade_messages (
+    id SERIAL PRIMARY KEY,
+    offer_id INTEGER REFERENCES trade_offers(id) ON DELETE CASCADE,
+    sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS ix_users_id ON users(id);
 CREATE INDEX IF NOT EXISTS ix_binder_entries_id ON binder_entries(id);
 CREATE INDEX IF NOT EXISTS ix_binder_entries_user_id ON binder_entries(user_id);
@@ -126,3 +135,4 @@ CREATE INDEX IF NOT EXISTS ix_trade_offers_sender_id ON trade_offers(sender_id);
 CREATE INDEX IF NOT EXISTS ix_trade_offers_receiver_id ON trade_offers(receiver_id);
 CREATE INDEX IF NOT EXISTS ix_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS ix_want_list_entries_user_id ON want_list_entries(user_id);
+CREATE INDEX IF NOT EXISTS ix_trade_messages_offer_id ON trade_messages(offer_id);
