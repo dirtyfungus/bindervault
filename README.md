@@ -218,6 +218,7 @@ docker compose down -v
 - Fix chat delivery — currently relies on 2s poll, explore WebSocket push
 - Add User authentication (Google Auth, 0auth, etc)
 - User settings need to be added - in the case where a user needs to do a password reset and such
+- User QR feature - Give the ability for a user to show a QR code and load there profile's binder to others
 
 ## DONE
 
