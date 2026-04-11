@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Package, Store } from 'lucide-react'
+import { X, Package, Store, Plus, Minus } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import styles from './TradeOfferModal.module.css'
@@ -96,7 +96,9 @@ export default function TradeOfferModal({ targetEntry, receiverId, onClose }) {
           <div className={styles.section}>
             <div className={styles.sectionLabel}>Cash add-on (CAD)</div>
             <div className={styles.cashRow}>
-              <span className={styles.cashSymbol}>$</span>
+              <button className={styles.cashStepBtn} onClick={() => setCash(v => Math.max(0, Number(v) - 5))}>
+                <Minus size={12} />
+              </button>
               <input
                 type="number"
                 className={`input ${styles.cashInput}`}
@@ -106,6 +108,9 @@ export default function TradeOfferModal({ targetEntry, receiverId, onClose }) {
                 onChange={e => setCash(e.target.value)}
                 placeholder="0.00"
               />
+              <button className={styles.cashStepBtn} onClick={() => setCash(v => Number(v) + 5)}>
+                <Plus size={12} />
+              </button>
             </div>
           </div>
 

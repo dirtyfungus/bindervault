@@ -305,7 +305,7 @@ async def respond_to_offer(
         if offer.receiver_id != current_user.id:
             raise HTTPException(403, "Only the receiver can decline")
         offer.status = OfferStatus.declined
-        if bode.message:
+        if body.message:
             offer.message = f"[Declined] {body.message}"
         await _notify(db, offer.sender_id, "offer_declined", "Trade declined", f"Your offer for {offer.target_entry.card_name if offer.target_entry else 'a card'} was declined", offer.id)
 
@@ -327,9 +327,12 @@ async def respond_to_offer(
             sender.trade_count += 1
         if receiver:
             receiver.trade_count += 1
+        # In a normal offer: sender wants target_entry → it goes to sender.
+        # In a counter offer: counter-sender's card is still the target → it goes to counter-receiver.
+        # offered_items are always the sender's cards being given to the receiver.
         is_counter = offer.counter_of_id is not None
         target_dest = offer.receiver_id if is_counter else offer.sender_id
-        offered_dest = offer.sender_id if is_counter else offer.receiver_id
+        offered_dest = offer.receiver_id
         if offer.target_entry_id:
             target = await db.scalar(select(BinderEntry).where(BinderEntry.id == offer.target_entry_id))
             if target:

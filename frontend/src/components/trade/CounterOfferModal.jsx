@@ -124,12 +124,6 @@ export default function CounterOfferModal({ offer, onClose }) {
               <button style={stepBtn} onClick={() => setCashAddOn(v => Math.max(0, Number(v) - 5))}>
                 <Minus size={12} />
               </button>
-              <span style={{ fontSize: 14, color: 'var(--white)', minWidth: 60, textAlign: 'center' }}>
-                ${Number(cashAddOn).toFixed(2)}
-              </span>
-              <button style={stepBtn} onClick={() => setCashAddOn(v => Number(v) + 5)}>
-                <Plus size={12} />
-              </button>
               <input
                 type="number"
                 min="0"
@@ -137,8 +131,11 @@ export default function CounterOfferModal({ offer, onClose }) {
                 value={cashAddOn}
                 onChange={e => setCashAddOn(e.target.value)}
                 className="input"
-                style={{ width: 80, fontSize: 13 }}
+                style={{ width: 90, fontSize: 13, textAlign: 'center' }}
               />
+              <button style={stepBtn} onClick={() => setCashAddOn(v => Number(v) + 5)}>
+                <Plus size={12} />
+              </button>
             </div>
           </div>
 

@@ -76,7 +76,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: python -m app.worker
+    entrypoint: ["python", "-m", "app.worker"]
 
   frontend:
     build:

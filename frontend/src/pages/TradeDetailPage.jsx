@@ -60,7 +60,13 @@ export default function TradeDetailPage() {
 
   const completeMutation = useMutation({
     mutationFn: () => api.post(`/trades/${offerId}/respond`, { action: 'complete' }),
-    onSuccess: () => { toast.success('Trade completed! 🎉'); qc.invalidateQueries({ queryKey: ['offer', offerId] }) },
+    onSuccess: () => {
+      toast.success('Trade completed! 🎉')
+      qc.invalidateQueries({ queryKey: ['offer', offerId] })
+      qc.invalidateQueries({ queryKey: ['trades'] })
+      qc.invalidateQueries({ queryKey: ['binder'] })
+    },
+    onError: (err) => toast.error(err.response?.data?.detail || 'Failed to complete trade'),
   })
 
   if (isLoading) return <div style={loadingStyle}>Loading trade…</div>
@@ -199,10 +205,6 @@ export default function TradeDetailPage() {
                       Confirm meetup
                     </button>
                   )}
-                </div>
-              ) : isSender ? (
-                <div style={{ fontSize: 13, color: 'var(--grey)', padding: '20px 0', textAlign: 'center' }}>
-                  ⏳ Waiting for {other?.handle} to set up the meetup details.
                 </div>
               ) : (
                 <div>

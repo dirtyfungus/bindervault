@@ -94,8 +94,12 @@
 .emptyBinder { font-size: 13px; color: var(--grey); grid-column: 1/-1; text-align: center; padding: 16px 0; }
 
 .cashRow { display: flex; align-items: center; gap: 8px; }
-.cashSymbol { font-size: 16px; color: var(--grey); }
-.cashInput { max-width: 120px; }
+.cashInput { max-width: 90px; text-align: center; }
+.cashStepBtn {
+  background: var(--navy); border: 1px solid var(--border);
+  border-radius: 6px; cursor: pointer; color: var(--white);
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+}
 
 .deliveryRow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .deliveryOpt {
