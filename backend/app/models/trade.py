@@ -104,3 +104,17 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="notifications")
+
+
+class TradeMessage(Base):
+    __tablename__ = "trade_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    offer_id: Mapped[int] = mapped_column(Integer, ForeignKey("trade_offers.id", ondelete="CASCADE"), index=True)
+    sender_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    sender = relationship("User", foreign_keys=[sender_id])
+    offer = relationship("TradeOffer", foreign_keys=[offer_id])

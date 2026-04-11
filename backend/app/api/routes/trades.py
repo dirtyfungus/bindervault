@@ -133,7 +133,8 @@ class CreateOfferRequest(BaseModel):
 
 
 class RespondRequest(BaseModel):
-    action: str  # accept | decline | cancel
+    action: str
+    message: Optional[str] = None
 
 
 class CounterRequest(BaseModel):
@@ -303,6 +304,8 @@ async def respond_to_offer(
         if offer.receiver_id != current_user.id:
             raise HTTPException(403, "Only the receiver can decline")
         offer.status = OfferStatus.declined
+        if bode.message:
+            offer.message = f"[Declined] {body.message}"
         await _notify(db, offer.sender_id, "offer_declined", "Trade declined", f"Your offer for {offer.target_entry.card_name if offer.target_entry else 'a card'} was declined", offer.id)
 
     elif body.action == "cancel":

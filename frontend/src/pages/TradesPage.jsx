@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
-import { ArrowLeftRight, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { ArrowLeftRight, CheckCircle, X } from 'lucide-react'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 import styles from './TradesPage.module.css'
@@ -16,7 +16,46 @@ const STATUS_COLORS = {
   completed: 'var(--grey)',
 }
 
-function OfferCard({ offer, type, onRespond }) {
+function DeclineModal({ offer, onConfirm, onClose, isPending }) {
+  const [reason, setReason] = useState('')
+  const other = offer.sender
+  return (
+    <div style={overlay} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={declineModal}>
+        <div style={modalHeader}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--white)' }}>Decline trade</span>
+          <button style={closeBtn} onClick={onClose}><X size={16} /></button>
+        </div>
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontSize: 13, color: 'var(--grey)', margin: 0 }}>
+            Let <strong style={{ color: 'var(--white)' }}>{other?.handle}</strong> know why you're declining.
+          </p>
+          <textarea
+            className="input"
+            rows={3}
+            placeholder="e.g. Not interested at this price… (optional)"
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            style={{ resize: 'none', fontSize: 13 }}
+            autoFocus
+          />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button
+            className="btn btn-danger"
+            onClick={() => onConfirm(reason.trim() || null)}
+            disabled={isPending}
+          >
+            {isPending ? 'Declining…' : 'Decline trade'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OfferCard({ offer, type, onRespond, onDecline }) {
   const navigate = useNavigate()
   const other = type === 'incoming' ? offer.sender : offer.receiver
 
@@ -24,10 +63,7 @@ function OfferCard({ offer, type, onRespond }) {
     <div className={styles.offerCard} onClick={() => navigate(`/trades/${offer.id}`)}>
       <div className={styles.offerTop}>
         <div className={styles.offerUser}>
-          <div
-            className={styles.offerAvatar}
-            style={{ background: other?.avatar_color || 'var(--teal-dim)' }}
-          >
+          <div className={styles.offerAvatar} style={{ background: other?.avatar_color || 'var(--teal-dim)' }}>
             {other?.display_name?.slice(0, 2).toUpperCase() || '??'}
           </div>
           <div>
@@ -80,35 +116,15 @@ function OfferCard({ offer, type, onRespond }) {
 
       {type === 'incoming' && offer.status === 'pending' && (
         <div className={styles.offerActions} onClick={e => e.stopPropagation()}>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => onRespond(offer.id, 'accept')}
-          >
-            Accept
-          </button>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate(`/trades/${offer.id}`)}
-          >
-            Counter
-          </button>
-          <button
-            className="btn btn-danger btn-sm"
-            onClick={() => onRespond(offer.id, 'decline')}
-          >
-            Decline
-          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => onRespond(offer.id, 'accept')}>Accept</button>
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/trades/${offer.id}`)}>Counter</button>
+          <button className="btn btn-danger btn-sm" onClick={() => onDecline(offer)}>Decline</button>
         </div>
       )}
 
       {type === 'outgoing' && offer.status === 'pending' && (
         <div className={styles.offerActions} onClick={e => e.stopPropagation()}>
-          <button
-            className="btn btn-danger btn-sm"
-            onClick={() => onRespond(offer.id, 'cancel')}
-          >
-            Cancel offer
-          </button>
+          <button className="btn btn-danger btn-sm" onClick={() => onRespond(offer.id, 'cancel')}>Cancel offer</button>
         </div>
       )}
 
@@ -124,6 +140,7 @@ function OfferCard({ offer, type, onRespond }) {
 
 export default function TradesPage() {
   const [tab, setTab] = useState('incoming')
+  const [decliningOffer, setDecliningOffer] = useState(null)
   const qc = useQueryClient()
 
   const { data: incoming = [], isLoading: loadingIn } = useQuery({
@@ -142,11 +159,12 @@ export default function TradesPage() {
   })
 
   const respondMutation = useMutation({
-    mutationFn: ({ id, action }) => api.post(`/trades/${id}/respond`, { action }),
+    mutationFn: ({ id, action, message }) => api.post(`/trades/${id}/respond`, { action, message }),
     onSuccess: (_, { action }) => {
       qc.invalidateQueries({ queryKey: ['trades'] })
       const msgs = { accept: 'Trade accepted!', decline: 'Trade declined', cancel: 'Offer cancelled' }
       toast.success(msgs[action] || 'Done')
+      setDecliningOffer(null)
     },
     onError: (err) => toast.error(err.response?.data?.detail || 'Action failed'),
   })
@@ -187,22 +205,35 @@ export default function TradesPage() {
         {loadings[tab] ? (
           <div className={styles.loading}>Loading…</div>
         ) : lists[tab].length === 0 ? (
-          <div className={styles.empty}>
-            No {tab} trades
-          </div>
+          <div className={styles.empty}>No {tab} trades</div>
         ) : (
           <div className={styles.offerGrid}>
             {lists[tab].map(offer => (
               <OfferCard
                 key={offer.id}
                 offer={offer}
-                type={tab === 'history' ? (offer.status === 'cancelled' ? 'outgoing' : 'incoming') : tab}
+                type={tab === 'history' ? (offer.sender_id === offer.sender?.id ? 'outgoing' : 'incoming') : tab}
                 onRespond={(id, action) => respondMutation.mutate({ id, action })}
+                onDecline={(offer) => setDecliningOffer(offer)}
               />
             ))}
           </div>
         )}
       </div>
+
+      {decliningOffer && (
+        <DeclineModal
+          offer={decliningOffer}
+          onConfirm={(reason) => respondMutation.mutate({ id: decliningOffer.id, action: 'decline', message: reason })}
+          onClose={() => setDecliningOffer(null)}
+          isPending={respondMutation.isPending}
+        />
+      )}
     </div>
   )
 }
+
+const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }
+const declineModal = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', width: '100%', maxWidth: 440, overflow: 'hidden' }
+const modalHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--border)' }
+const closeBtn = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey)', display: 'flex', alignItems: 'center' }
