@@ -216,6 +216,8 @@ docker compose down -v
 - Counter-offer options: propose multiple alternatives, limited to own side of trade
 - Fix chat sender visibility — messages not showing on sender's side
 - Fix chat delivery — currently relies on 2s poll, explore WebSocket push
+- Add User authentication (Google Auth, 0auth, etc)
+- User settings need to be added - in the case where a user needs to do a password reset and such
 
 ## DONE
 
