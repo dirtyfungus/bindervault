@@ -47,6 +47,16 @@ async def get_user(user_id: int, db: AsyncSession = Depends(get_db), _=Depends(g
     if not user:
         raise HTTPException(404, "User not found")
 
+@router.get("/{user_id}/wants")
+async def get_user_wants(user_id: int, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    from app.models.binder import WantListEntry
+    result = await db.execute(select(WantListEntry).where(WantListEntry.user_id == user_id))
+    return [
+        {"id": w.id, "scryfall_id": w.scryfall_id, "card_name": w.card_name,
+        "set_code": w.set_code, "image_uri": w.image_uri, "max_condition": w.max_condition}
+        for w in result.scalars().all()
+    ]
+
     binder_count = await db.scalar(select(func.count()).where(BinderEntry.user_id == user_id))
     follower_count = await db.scalar(select(func.count()).where(UserFollow.following_id == user_id))
     following_count = await db.scalar(select(func.count()).where(UserFollow.follower_id == user_id))
