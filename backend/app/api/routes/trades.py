@@ -76,6 +76,7 @@ def offer_out(offer: TradeOffer):
         "offered_items": [
             {
                 "id": i.id,
+                "binder_entry_id": i.binder_entry_id,
                 "card_name": i.card_name,
                 "scryfall_id": i.scryfall_id,
                 "quantity": i.quantity,
@@ -376,7 +377,7 @@ async def counter_offer(
 
     for eid in body.offered_entry_ids:
         entry = await db.scalar(
-            select(BinderEntry).where(BinderEntry.id == eid, BinderEntry.user_id == original.sender_id)
+            select(BinderEntry).where(BinderEntry.id == eid, BinderEntry.user_id == current_user.id)
         )
         if entry:
             db.add(TradeOfferItem(
