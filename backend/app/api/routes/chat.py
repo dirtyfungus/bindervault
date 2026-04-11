@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
+from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 import json
 
@@ -55,11 +56,15 @@ async def get_messages(
         msg.is_read = True
     await db.commit()
 
-    # Fetch all messages
+    # Fetch latest 500 messages
     all_msgs = await db.execute(
-        select(TradeMessage).where(TradeMessage.offer_id == offer_id).order_by(TradeMessage.created_at)
+        select(TradeMessage)
+        .where(TradeMessage.offer_id == offer_id)
+        .options(selectinload(TradeMessage.sender))
+        .order_by(TradeMessage.created_at.desc())
+        .limit(500)
     )
-    return [msg_out(m) for m in all_msgs.scalars().all()]
+    return list(reversed([msg_out(m) for m in all_msgs.scalars().all()]))
 
 
 class SendMessageRequest(BaseModel):
@@ -91,7 +96,9 @@ async def send_message(
     await db.refresh(msg)
 
     # Reload with relationship
-    full = await db.execute(select(TradeMessage).where(TradeMessage.id == msg.id))
+    full = await db.execute(
+        select(TradeMessage).where(TradeMessage.id == msg.id).options(selectinload(TradeMessage.sender))
+    )
     msg = full.scalar_one()
 
     # Push real-time event to the other user via Redis
