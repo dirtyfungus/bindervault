@@ -12,6 +12,19 @@ from app.core.security import get_current_user
 router = APIRouter()
 
 
+def normalize_name(name: str) -> str:
+    """Normalize card name for matching - straighten apostrophes and strip whitespace."""
+    return (
+        name
+        .replace('\u2019', "'")  # right single quotation mark
+        .replace('\u2018', "'")  # left single quotation mark
+        .replace('\u201c', '"')  # left double quotation mark
+        .replace('\u201d', '"')  # right double quotation mark
+        .strip()
+        .lower()
+    )
+
+
 def entry_out(e: BinderEntry, active_offer_id: int | None = None):
     return {
         "id": e.id,
@@ -60,6 +73,17 @@ class UpdateCardRequest(BaseModel):
     is_tradeable: Optional[bool] = None
 
 
+class ImportCardItem(BaseModel):
+    card_name: str
+    quantity: int = 1
+    set_code: Optional[str] = None
+
+
+class ImportRequest(BaseModel):
+    cards: list[ImportCardItem]
+    on_duplicate: str = "increment"  # "increment" or "skip"
+
+
 @router.get("/")
 async def get_my_binder(
     page: int = Query(1, ge=1),
@@ -103,13 +127,10 @@ async def _get_binder(user_id, page, per_page, search, rarity, tradeable_only, d
     result = await db.execute(q)
     entries = result.scalars().all()
 
-    # Find active offer IDs for each binder entry
-    # An entry is "reserved" if it appears in a pending/accepted trade as offered item OR as target
     entry_ids = [e.id for e in entries]
     active_offer_map: dict[int, int] = {}
 
     if entry_ids:
-        # Check offered items (cards the user is giving)
         offered_result = await db.execute(
             select(TradeOfferItem.binder_entry_id, TradeOffer.id)
             .join(TradeOffer, TradeOfferItem.offer_id == TradeOffer.id)
@@ -121,7 +142,6 @@ async def _get_binder(user_id, page, per_page, search, rarity, tradeable_only, d
         for binder_entry_id, offer_id in offered_result.all():
             active_offer_map[binder_entry_id] = offer_id
 
-        # Check target entries (cards the user is receiving / being requested)
         target_result = await db.execute(
             select(TradeOffer.target_entry_id, TradeOffer.id)
             .where(
@@ -205,6 +225,162 @@ async def delete_card(
         raise HTTPException(404, "Entry not found")
     await db.delete(entry)
     await db.commit()
+
+
+@router.get("/import/fetch-deck")
+async def fetch_deck(url: str = Query(...), _=Depends(get_current_user)):
+    import httpx, re
+
+    mox = re.search(r'moxfield\.com/decks/([A-Za-z0-9_-]+)', url)
+    arch = re.search(r'archidekt\.com/decks/(\d+)', url)
+
+    async with httpx.AsyncClient() as client:
+        if mox:
+            r = await client.get(
+                f"https://api.moxfield.com/v2/decks/all/{mox.group(1)}",
+                timeout=15,
+                headers={"User-Agent": "BinderVault/1.0"},
+            )
+            if not r.is_success:
+                raise HTTPException(502, "Could not fetch Moxfield deck")
+            data = r.json()
+            cards = []
+            for section in ["mainboard", "sideboard", "commanders", "companions"]:
+                for card in data.get(section, {}).values():
+                    cards.append({
+                        "card_name": card["card"]["name"],
+                        "quantity": card["quantity"],
+                        "set_code": card["card"].get("set", "").lower() or None,
+                    })
+            return {"cards": cards}
+
+        elif arch:
+            r = await client.get(
+                f"https://archidekt.com/api/decks/{arch.group(1)}/small/",
+                timeout=15,
+                headers={"User-Agent": "BinderVault/1.0"},
+            )
+            if not r.is_success:
+                raise HTTPException(502, "Could not fetch Archidekt deck")
+            data = r.json()
+            cards = []
+            for card in data.get("cards", []):
+                cards.append({
+                    "card_name": card["card"]["oracleCard"]["name"],
+                    "quantity": card["quantity"],
+                    "set_code": card["card"].get("edition", {}).get("editioncode", "").lower() or None,
+                })
+            return {"cards": cards}
+
+        else:
+            raise HTTPException(400, "Unrecognized URL. Paste a Moxfield or Archidekt deck URL.")
+
+
+@router.post("/import")
+async def import_cards(
+    body: ImportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    import httpx
+    import asyncio
+
+    results = []
+    cards_to_add = []
+
+    async with httpx.AsyncClient() as client:
+        chunks = [body.cards[i:i+75] for i in range(0, len(body.cards), 75)]
+
+        for chunk in chunks:
+            # Normalize names before sending to Scryfall
+            identifiers = [{"name": normalize_name(item.card_name)} for item in chunk]
+
+            r = await client.post(
+                "https://api.scryfall.com/cards/collection",
+                json={"identifiers": identifiers},
+                timeout=30,
+                headers={"Content-Type": "application/json"},
+            )
+            await asyncio.sleep(0.1)
+
+            if r.status_code != 200:
+                for item in chunk:
+                    results.append({"card_name": item.card_name, "status": "not_found"})
+                continue
+
+            data = r.json()
+
+            # Build name->card map using normalized names
+            found_by_name = {
+                normalize_name(c["name"]): c
+                for c in data.get("data", [])
+            }
+            # Also index by card face names (double-faced cards)
+            for c in data.get("data", []):
+                for face in c.get("card_faces", []):
+                    face_key = normalize_name(face.get("name", ""))
+                    if face_key and face_key not in found_by_name:
+                        found_by_name[face_key] = c
+
+            for item in chunk:
+                key = normalize_name(item.card_name)
+                if key in found_by_name:
+                    cards_to_add.append((item, found_by_name[key]))
+                else:
+                    results.append({"card_name": item.card_name, "status": "not_found"})
+
+    # Step 2: Add found cards to binder
+    for item, c in cards_to_add:
+        scryfall_id = c["id"]
+        image_uri = (
+            c.get("image_uris", {}).get("normal")
+            or (c.get("card_faces", [{}])[0].get("image_uris", {}).get("normal"))
+        )
+        price_usd = float(c["prices"]["usd"]) if c.get("prices", {}).get("usd") else None
+
+        existing = await db.execute(
+            select(BinderEntry).where(
+                BinderEntry.user_id == current_user.id,
+                BinderEntry.scryfall_id == scryfall_id,
+                BinderEntry.condition == "NM",
+                BinderEntry.foil == False,
+            )
+        )
+        entry = existing.scalar_one_or_none()
+
+        if entry:
+            if body.on_duplicate == "increment":
+                entry.quantity += item.quantity
+                await db.commit()
+                results.append({"card_name": item.card_name, "status": "incremented", "quantity": entry.quantity})
+            else:
+                results.append({"card_name": item.card_name, "status": "skipped"})
+        else:
+            new_entry = BinderEntry(
+                user_id=current_user.id,
+                scryfall_id=scryfall_id,
+                card_name=c["name"],
+                set_code=c["set"],
+                set_name=c.get("set_name"),
+                collector_number=c.get("collector_number"),
+                rarity=c.get("rarity"),
+                image_uri=image_uri,
+                price_usd=price_usd,
+                condition="NM",
+                quantity=item.quantity,
+                foil=False,
+                is_tradeable=True,
+            )
+            db.add(new_entry)
+            await db.commit()
+            results.append({
+                "card_name": item.card_name,
+                "status": "added",
+                "image_uri": image_uri,
+                "scryfall_id": scryfall_id,
+            })
+
+    return {"results": results}
 
 
 # ---- Want list ----
