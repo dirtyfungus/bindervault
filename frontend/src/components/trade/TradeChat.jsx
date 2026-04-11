@@ -36,7 +36,7 @@ export default function TradeChat({ offerId, wsRef }) {
 
   // Auto scroll to bottom on new messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    bottomRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [messages])
 
   const sendMutation = useMutation({

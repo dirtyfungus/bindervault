@@ -56,14 +56,15 @@ async def get_messages(
         msg.is_read = True
     await db.commit()
 
-    # Fetch all messages
+    # Fetch latest 500 messages
     all_msgs = await db.execute(
         select(TradeMessage)
         .where(TradeMessage.offer_id == offer_id)
         .options(selectinload(TradeMessage.sender))
-        .order_by(TradeMessage.created_at)
+        .order_by(TradeMessage.created_at.desc())
+        .limit(500)
     )
-    return [msg_out(m) for m in all_msgs.scalars().all()]
+    return list(reversed([msg_out(m) for m in all_msgs.scalars().all()]))
 
 
 class SendMessageRequest(BaseModel):
