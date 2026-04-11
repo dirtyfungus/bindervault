@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
@@ -11,11 +12,14 @@ const CONDITION_LABELS = { M: 'Mint', NM: 'Near Mint', LP: 'Lightly Played', MP:
 
 export default function CardItem({ entry, onOffer, onDelete, isOwner, isWanted }) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const rarityClass = RARITY_CLASS[entry.rarity] || 'rarity-common'
   const [menu, setMenu] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const menuRef = useRef(null)
+
+  const isReserved = !!entry.active_offer_id
 
   // Edit state
   const [editCondition, setEditCondition] = useState(entry.condition)
@@ -35,7 +39,6 @@ export default function CardItem({ entry, onOffer, onDelete, isOwner, isWanted }
   const handleRightClick = (e) => {
     if (!isOwner) return
     e.preventDefault()
-    // Keep menu inside viewport
     const x = Math.min(e.clientX, window.innerWidth - 200)
     const y = Math.min(e.clientY, window.innerHeight - 200)
     setMenu({ x, y })
@@ -70,6 +73,14 @@ export default function CardItem({ entry, onOffer, onDelete, isOwner, isWanted }
     onError: (err) => toast.error(err.response?.data?.detail || 'Failed to add to wishlist'),
   })
 
+  const handleOffer = () => {
+    if (isReserved) {
+      toast.error(`This card is already in Trade #${entry.active_offer_id}`, { duration: 4000 })
+      return
+    }
+    onOffer?.(entry)
+  }
+
   return (
     <>
       <div
@@ -93,6 +104,22 @@ export default function CardItem({ entry, onOffer, onDelete, isOwner, isWanted }
               NOT FOR TRADE
             </div>
           )}
+          {/* Reserve warning badge — shown to both owner and visitors */}
+          {isReserved && (
+            <div
+              title={`In active Trade #${entry.active_offer_id}`}
+              style={{
+                position: 'absolute', bottom: 7, left: 7,
+                background: 'rgba(255,165,0,0.92)', borderRadius: 4,
+                fontSize: 9, fontWeight: 700, color: '#000',
+                padding: '2px 5px', letterSpacing: '0.05em',
+                cursor: isOwner ? 'pointer' : 'default',
+              }}
+              onClick={isOwner ? () => navigate(`/trades/${entry.active_offer_id}`) : undefined}
+            >
+              ⚠ IN TRADE
+            </div>
+          )}
         </div>
 
         <div className={styles.info}>
@@ -110,7 +137,14 @@ export default function CardItem({ entry, onOffer, onDelete, isOwner, isWanted }
               <span style={{ fontSize: 10, color: 'var(--grey)' }}>Right-click to edit</span>
             ) : (
               entry.is_tradeable && (
-                <button className="btn btn-sm btn-primary" onClick={() => onOffer?.(entry)}>Offer</button>
+                <button
+                  className={`btn btn-sm ${isReserved ? 'btn-ghost' : 'btn-primary'}`}
+                  onClick={handleOffer}
+                  title={isReserved ? `Already in Trade #${entry.active_offer_id}` : undefined}
+                  style={isReserved ? { opacity: 0.6 } : undefined}
+                >
+                  {isReserved ? '⚠ In trade' : 'Offer'}
+                </button>
               )
             )}
           </div>
@@ -122,10 +156,16 @@ export default function CardItem({ entry, onOffer, onDelete, isOwner, isWanted }
         <div ref={menuRef} style={{ position: 'fixed', top: menu.y, left: menu.x, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', zIndex: 9999, minWidth: 190, overflow: 'hidden' }}>
           <div style={{ padding: '8px 14px', fontSize: 11, fontWeight: 600, color: 'var(--grey)', borderBottom: '1px solid var(--border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {entry.card_name}
+            {isReserved && <span style={{ color: 'orange', marginLeft: 6 }}>⚠ In trade</span>}
           </div>
           <button style={menuItem} onClick={() => { setMenu(null); setShowDetails(true) }}>🔍 View details</button>
           <button style={menuItem} onClick={() => { setMenu(null); setShowEdit(true) }}>✏️ Edit card</button>
           <button style={menuItem} onClick={() => addToWishlist.mutate()}>⭐ Add to wishlist</button>
+          {isReserved && (
+            <button style={{ ...menuItem, color: 'orange' }} onClick={() => { setMenu(null); navigate(`/trades/${entry.active_offer_id}`) }}>
+              🔗 View Trade #{entry.active_offer_id}
+            </button>
+          )}
           <button style={menuItem} onClick={() => toggleTradeable.mutate()}>
             {entry.is_tradeable ? '🔒 Hide from trades' : '✅ List for trading'}
           </button>
@@ -183,7 +223,12 @@ export default function CardItem({ entry, onOffer, onDelete, isOwner, isWanted }
                 )}
                 <div>
                   <div style={detailLabel}>Trade status</div>
-                  <div style={detailValue}>{entry.is_tradeable ? '✅ Listed for trading' : '🔒 Not for trade'}</div>
+                  <div style={detailValue}>
+                    {isReserved
+                      ? <span style={{ color: 'orange' }}>⚠ In active Trade #{entry.active_offer_id}</span>
+                      : entry.is_tradeable ? '✅ Listed for trading' : '🔒 Not for trade'
+                    }
+                  </div>
                 </div>
               </div>
             </div>
@@ -199,8 +244,21 @@ export default function CardItem({ entry, onOffer, onDelete, isOwner, isWanted }
               <span style={modalTitle}>Edit — {entry.card_name}</span>
               <button style={closeBtn} onClick={() => setShowEdit(false)}><X size={16} /></button>
             </div>
-            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+            {isReserved && (
+              <div style={{ margin: '12px 20px 0', padding: '10px 14px', background: '#ff990015', border: '1px solid #ff990040', borderRadius: 8, fontSize: 13, color: 'orange' }}>
+                ⚠ This card is currently in active{' '}
+                <span
+                  style={{ textDecoration: 'underline', cursor: 'pointer' }}
+                  onClick={() => { setShowEdit(false); navigate(`/trades/${entry.active_offer_id}`) }}
+                >
+                  Trade #{entry.active_offer_id}
+                </span>
+                . Changes will still apply.
+              </div>
+            )}
+
+            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Condition */}
               <div>
                 <div style={fieldLabel}>Condition</div>

@@ -12,7 +12,7 @@ from app.core.security import get_current_user
 router = APIRouter()
 
 
-def entry_out(e: BinderEntry):
+def entry_out(e: BinderEntry, active_offer_id: int | None = None):
     return {
         "id": e.id,
         "user_id": e.user_id,
@@ -29,6 +29,7 @@ def entry_out(e: BinderEntry):
         "price_usd": float(e.price_usd) if e.price_usd else None,
         "notes": e.notes,
         "is_tradeable": e.is_tradeable,
+        "active_offer_id": active_offer_id,
         "created_at": e.created_at,
         "updated_at": e.updated_at,
     }
@@ -87,6 +88,8 @@ async def get_user_binder(
 
 
 async def _get_binder(user_id, page, per_page, search, rarity, tradeable_only, db):
+    from app.models.trade import TradeOffer, TradeOfferItem
+
     q = select(BinderEntry).where(BinderEntry.user_id == user_id)
     if search:
         q = q.where(BinderEntry.card_name.ilike(f"%{search}%"))
@@ -100,12 +103,42 @@ async def _get_binder(user_id, page, per_page, search, rarity, tradeable_only, d
     result = await db.execute(q)
     entries = result.scalars().all()
 
+    # Find active offer IDs for each binder entry
+    # An entry is "reserved" if it appears in a pending/accepted trade as offered item OR as target
+    entry_ids = [e.id for e in entries]
+    active_offer_map: dict[int, int] = {}
+
+    if entry_ids:
+        # Check offered items (cards the user is giving)
+        offered_result = await db.execute(
+            select(TradeOfferItem.binder_entry_id, TradeOffer.id)
+            .join(TradeOffer, TradeOfferItem.offer_id == TradeOffer.id)
+            .where(
+                TradeOfferItem.binder_entry_id.in_(entry_ids),
+                TradeOffer.status.in_(["pending", "accepted"]),
+            )
+        )
+        for binder_entry_id, offer_id in offered_result.all():
+            active_offer_map[binder_entry_id] = offer_id
+
+        # Check target entries (cards the user is receiving / being requested)
+        target_result = await db.execute(
+            select(TradeOffer.target_entry_id, TradeOffer.id)
+            .where(
+                TradeOffer.target_entry_id.in_(entry_ids),
+                TradeOffer.status.in_(["pending", "accepted"]),
+            )
+        )
+        for target_entry_id, offer_id in target_result.all():
+            if target_entry_id not in active_offer_map:
+                active_offer_map[target_entry_id] = offer_id
+
     return {
         "total": total,
         "page": page,
         "per_page": per_page,
         "pages": max(1, -(-total // per_page)),
-        "items": [entry_out(e) for e in entries],
+        "items": [entry_out(e, active_offer_map.get(e.id)) for e in entries],
     }
 
 
@@ -115,7 +148,6 @@ async def add_card(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Check if same scryfall_id + condition already exists for this user
     existing = await db.execute(
         select(BinderEntry).where(
             BinderEntry.user_id == current_user.id,
