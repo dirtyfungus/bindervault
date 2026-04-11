@@ -183,19 +183,30 @@ docker compose down -v
 
 ## TODO
 
-- On the card offer, add an option to request extra money on the deal
 - Add "Add friend" or "follow" to be able to quickly visualize your friend's binders
-- Currently counter offer doesn't allow for editing the trade in any way + visuals are bugged a bit. 
-- ~~We cannot accept the deal from the requesters' side, When the receiver accepts the trade, both users get stuck in limbo for this trade, since there's no way of the other user accepting/declining (Maybe auto accept from the requester side if there are no counter offers)~~
-- Implement card reserve/warning when a card is already involved in a trade and someone wants another trade
-- After accepting trade you cannot visualize the meetup information if you're the one requesting the trade
-- ~~Implement trade specific chat as well as user to user chat~~
-- Implement geolocation auto complete for my location and Meetup location
+- Currently counter offer doesn't allow for editing the trade in any way + visuals are bugged a bit
+- Implement geolocation auto complete for my location and meetup location
 - Add "Use my location" as an alternative when signing up (Make it city specific, no actual address)
 - On "Discover" be able to lookup specific cards available for trading
-- Be able to mark cards as "not for trade" (This will hide the card from people looking at your profile, as well as the above)
-- Implement Counter-offer options: When countering a trade, users can propose multiple alternative offers, each with its own set of cards/amounts. Countering is limited to modifying your own side of the trade, to change the other party's cards, a new trade must be initiated.
+- Implement Counter-offer options: When countering a trade, users can propose multiple alternative offers, each with its own set of cards/amounts. Countering is limited to modifying your own side of the trade, to change the other party's cards, a new trade must be initiated
+- Fix chat sender visibility — messages only show on receiver side, not sender
+- Fix chat messages not showing instantly on the other user's side (currently requires 2s poll)
+
+## DONE
+
+- ~~On the card offer, add an option to request extra money on the deal~~
+- ~~We cannot accept the deal from the requesters' side — auto accept from requester side if no counter offers~~
+- ~~Implement card reserve/warning when a card is already involved in a trade~~
+- ~~After accepting trade you cannot visualize the meetup information if you're the one requesting the trade~~
+- ~~Implement trade specific chat~~
+- ~~Be able to mark cards as "not for trade"~~
 - ~~Notification icons don't go away~~
+- ~~Show all card printings in search (alt art, extended, showcase, borderless, etc.)~~
+- ~~Add wishlist page~~
+- ~~Beta disclaimer modal on login~~
+- ~~Trade chat real-time notifications~~
+- ~~Decline trade with reason~~
+- ~~Card right-click context menu~~
 
 
 
