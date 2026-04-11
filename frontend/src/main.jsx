@@ -14,6 +14,7 @@ import UserProfilePage from './pages/UserProfilePage'
 import TradesPage from './pages/TradesPage'
 import DiscoverPage from './pages/DiscoverPage'
 import TradeDetailPage from './pages/TradeDetailPage'
+import WishlistPage from './pages/WishlistPage'
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } })
 
@@ -30,6 +31,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+          <Route path="wishlist" element={<WishlistPage />} />
             <Route index element={<Navigate to="/binder" replace />} />
             <Route path="binder" element={<BinderPage />} />
             <Route path="binder/:userId" element={<UserProfilePage />} />

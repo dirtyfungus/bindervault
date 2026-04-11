@@ -90,6 +90,9 @@ export default function AppShell() {
           <NavLink to="/trades" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.active : ''}`}>
             Trades
           </NavLink>
+          <NavLink to="/wishlist" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.active : ''}`}>
+            Wishlist
+          </NavLink>
         </div>
 
         <div className={styles.navRight}>
