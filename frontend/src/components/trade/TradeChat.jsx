@@ -15,10 +15,10 @@ export default function TradeChat({ offerId, wsRef }) {
   const { data: messages = [] } = useQuery({
     queryKey: ['trade-messages', offerId],
     queryFn: () => api.get(`/trades/${offerId}/messages`).then(r => r.data),
-    refetchInterval: 5000, // fallback polling every 5s
+    refetchInterval: 2000, // poll every 2s for near-instant feel
   })
 
-  // Listen for real-time messages via websocket
+  // Listen for real-time messages via websocket notification channel
   useEffect(() => {
     if (!wsRef?.current) return
     const ws = wsRef.current
@@ -36,7 +36,7 @@ export default function TradeChat({ offerId, wsRef }) {
 
   // Auto scroll to bottom on new messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'auto' })
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
   const sendMutation = useMutation({
@@ -70,13 +70,17 @@ export default function TradeChat({ offerId, wsRef }) {
         {messages.map(msg => {
           const isMe = msg.sender_id === me?.id
           return (
-            <div key={msg.id} style={{ ...bubble, alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+            <div key={msg.id} style={{ ...bubbleWrap, alignItems: isMe ? 'flex-end' : 'flex-start' }}>
               {!isMe && (
                 <div style={{ fontSize: 10, color: 'var(--grey)', marginBottom: 2 }}>
                   {msg.sender_handle}
                 </div>
               )}
-              <div style={{ ...bubbleInner, background: isMe ? 'var(--teal)' : 'var(--navy)', color: isMe ? 'var(--navy)' : 'var(--white-dim)' }}>
+              <div style={{
+                ...bubbleInner,
+                background: isMe ? 'var(--teal)' : 'var(--navy)',
+                color: isMe ? 'var(--navy)' : 'var(--white-dim)',
+              }}>
                 {msg.body}
               </div>
               <div style={{ fontSize: 10, color: 'var(--grey)', marginTop: 2 }}>
@@ -142,7 +146,7 @@ const empty = {
   textAlign: 'center',
   marginTop: 40,
 }
-const bubble = {
+const bubbleWrap = {
   display: 'flex',
   flexDirection: 'column',
   maxWidth: '75%',

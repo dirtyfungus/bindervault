@@ -112,4 +112,12 @@ async def send_message(
         })
         await redis.publish(f"user:{other_id}:notifications", payload)
 
+    # Create a DB notification so the bell lights up
+    from app.api.routes.trades import _notify
+    await _notify(
+        db, other_id, "trade_message", "New message",
+        f"{current_user.handle} sent you a message on Trade #{offer_id}",
+        offer_id,
+    )
+
     return msg_out(msg)
