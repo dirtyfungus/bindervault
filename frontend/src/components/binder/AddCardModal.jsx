@@ -81,17 +81,19 @@ export default function AddCardModal({ onClose }) {
             {isFetching && <Loader size={14} color="var(--grey)" className={styles.spin} />}
           </div>
 
-          {/* Results */}
+{/* Results */}
           {results && results.length > 0 && !selected && (
             <div className={styles.results}>
-              {results.slice(0, 12).map(card => (
+              {results.slice(0, 30).map(card => (
                 <button key={card.scryfall_id} className={styles.resultItem} onClick={() => setSelected(card)}>
                   {card.image_uri && (
                     <img src={card.image_uri} alt={card.card_name} className={styles.resultThumb} />
                   )}
                   <div className={styles.resultInfo}>
                     <span className={styles.resultName}>{card.card_name}</span>
-                    <span className={styles.resultMeta}>{card.set_name} · {card.rarity}</span>
+                    <span className={styles.resultMeta}>
+                      {card.set_code?.toUpperCase()} #{card.collector_number} · {card.set_name} · {card.rarity}
+                    </span>
                     {card.price_usd && <span className={styles.resultPrice}>${card.price_usd.toFixed(2)}</span>}
                   </div>
                   <Plus size={14} color="var(--teal)" style={{ flexShrink: 0, marginLeft: 'auto' }} />

@@ -12,7 +12,7 @@ async def search_cards(q: str = Query(..., min_length=2), _=Depends(get_current_
     async with httpx.AsyncClient() as client:
         r = await client.get(
             f"{settings.scryfall_api_base}/cards/search",
-            params={"q": q, "unique": "cards", "order": "name"},
+            params={"q": q, "unique": "prints", "order": "released", "dir": "desc"},
             timeout=10,
         )
     if r.status_code == 404:
