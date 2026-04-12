@@ -103,6 +103,7 @@ export default function CardItem({ entry, onOffer, onDelete, isOwner, isWanted, 
         }}
         onContextMenu={handleRightClick}
         onClick={handleClick}
+        onDoubleClick={() => { setMenu(null); setShowDetails(true) }}
       >
         {/* Selection checkbox overlay */}
         {isSelectable && (
@@ -227,7 +228,7 @@ export default function CardItem({ entry, onOffer, onDelete, isOwner, isWanted, 
             </div>
             <div style={{ display: 'flex', gap: 20, padding: 20 }}>
               {entry.image_uri && (
-                <img src={entry.image_uri} alt={entry.card_name} style={{ width: 180, borderRadius: 8, flexShrink: 0 }} />
+                <img src={entry.image_uri} alt={entry.card_name} style={{ width: 180, height: 251, borderRadius: 8, flexShrink: 0, objectFit: 'cover' }} />
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div><div style={detailLabel}>Name</div><div style={detailValue}>{entry.card_name}</div></div>
