@@ -154,7 +154,6 @@ async def create_offer(
     if body.receiver_id == current_user.id:
         raise HTTPException(400, "Cannot trade with yourself")
 
-    # Validate target entry belongs to receiver
     target = await db.scalar(
         select(BinderEntry).where(
             BinderEntry.id == body.target_entry_id,
@@ -165,7 +164,6 @@ async def create_offer(
     if not target:
         raise HTTPException(404, "Target card not found or not tradeable")
 
-    # Validate offered entries belong to sender
     offered_entries = []
     for eid in body.offered_entry_ids:
         entry = await db.scalar(
@@ -294,20 +292,38 @@ async def respond_to_offer(
     offer = await _load_offer(offer_id, db)
 
     if body.action == "accept":
-        if offer.receiver_id != current_user.id:
-            raise HTTPException(403, "Only the receiver can accept")
-        if offer.status not in [OfferStatus.pending, OfferStatus.countered]:
+        # Receiver accepts a pending offer, OR original sender accepts a counter
+        if offer.status == OfferStatus.pending:
+            if offer.receiver_id != current_user.id:
+                raise HTTPException(403, "Only the receiver can accept a pending offer")
+        elif offer.status == OfferStatus.countered:
+            if offer.sender_id != current_user.id:
+                raise HTTPException(403, "Only the original sender can accept a counter offer")
+        else:
             raise HTTPException(400, "Offer cannot be accepted in its current state")
         offer.status = OfferStatus.accepted
-        await _notify(db, offer.sender_id, "offer_accepted", "Trade accepted!", f"Your offer for {offer.target_entry.card_name} was accepted", offer.id)
+        notify_id = offer.sender_id if offer.receiver_id == current_user.id else offer.receiver_id
+        await _notify(
+            db, notify_id, "offer_accepted", "Trade accepted!",
+            f"Your offer for {offer.target_entry.card_name if offer.target_entry else 'a card'} was accepted",
+            offer.id,
+        )
 
     elif body.action == "decline":
-        if offer.receiver_id != current_user.id:
-            raise HTTPException(403, "Only the receiver can decline")
+        # Either party can decline
+        if offer.sender_id != current_user.id and offer.receiver_id != current_user.id:
+            raise HTTPException(403, "Not part of this trade")
+        if offer.status not in [OfferStatus.pending, OfferStatus.countered]:
+            raise HTTPException(400, "Cannot decline in current state")
         offer.status = OfferStatus.declined
         if body.message:
             offer.message = f"[Declined] {body.message}"
-        await _notify(db, offer.sender_id, "offer_declined", "Trade declined", f"Your offer for {offer.target_entry.card_name if offer.target_entry else 'a card'} was declined", offer.id)
+        notify_id = offer.sender_id if offer.receiver_id == current_user.id else offer.receiver_id
+        await _notify(
+            db, notify_id, "offer_declined", "Trade declined",
+            f"Your offer for {offer.target_entry.card_name if offer.target_entry else 'a card'} was declined",
+            offer.id,
+        )
 
     elif body.action == "cancel":
         if offer.sender_id != current_user.id:
@@ -320,19 +336,14 @@ async def respond_to_offer(
         if offer.status != OfferStatus.accepted:
             raise HTTPException(400, "Offer must be accepted before completing")
         offer.status = OfferStatus.completed
-        # Increment trade counts
         sender = await db.scalar(select(User).where(User.id == offer.sender_id))
         receiver = await db.scalar(select(User).where(User.id == offer.receiver_id))
         if sender:
             sender.trade_count += 1
         if receiver:
             receiver.trade_count += 1
-        # In a normal offer: sender wants target_entry → it goes to sender.
-        # In a counter offer: counter-sender's card is still the target → it goes to counter-receiver.
-        # offered_items are always the sender's cards being given to the receiver.
         is_counter = offer.counter_of_id is not None
         target_dest = offer.receiver_id if is_counter else offer.sender_id
-        offered_dest = offer.receiver_id
         if offer.target_entry_id:
             target = await db.scalar(select(BinderEntry).where(BinderEntry.id == offer.target_entry_id))
             if target:
@@ -341,7 +352,7 @@ async def respond_to_offer(
             if item.binder_entry_id:
                 entry = await db.scalar(select(BinderEntry).where(BinderEntry.id == item.binder_entry_id))
                 if entry:
-                    await _transfer_one(entry, offered_dest, db)
+                    await _transfer_one(entry, offer.receiver_id, db)
 
     else:
         raise HTTPException(400, "Invalid action")
@@ -358,17 +369,28 @@ async def counter_offer(
     current_user: User = Depends(get_current_user),
 ):
     original = await _load_offer(offer_id, db)
-    if original.receiver_id != current_user.id:
-        raise HTTPException(403, "Only the receiver can counter")
-    if original.status != OfferStatus.pending:
-        raise HTTPException(400, "Can only counter pending offers")
+
+    is_receiver = original.receiver_id == current_user.id
+    is_sender = original.sender_id == current_user.id
+
+    if not is_receiver and not is_sender:
+        raise HTTPException(403, "Not part of this trade")
+
+    if original.status == OfferStatus.pending and not is_receiver:
+        raise HTTPException(403, "Only the receiver can counter a pending offer")
+
+    if original.status == OfferStatus.countered and not is_sender:
+        raise HTTPException(403, "Only the original sender can counter back")
+
+    if original.status not in [OfferStatus.pending, OfferStatus.countered]:
+        raise HTTPException(400, "Can only counter pending or countered offers")
 
     original.status = OfferStatus.countered
 
-    # Swap sender/receiver for the counter offer
+    # New counter: swap sender/receiver
     counter = TradeOffer(
         sender_id=current_user.id,
-        receiver_id=original.sender_id,
+        receiver_id=original.sender_id if is_receiver else original.receiver_id,
         target_entry_id=original.target_entry_id,
         cash_add_on=body.cash_add_on,
         delivery_method=body.delivery_method,
@@ -391,8 +413,9 @@ async def counter_offer(
                 quantity=1,
             ))
 
+    notify_user_id = original.sender_id if is_receiver else original.receiver_id
     await _notify(
-        db, original.sender_id, "counter_offer",
+        db, notify_user_id, "counter_offer",
         "Counter offer received",
         f"{current_user.handle} sent a counter offer",
         counter.id,

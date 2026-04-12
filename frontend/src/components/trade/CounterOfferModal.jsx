@@ -14,10 +14,10 @@ export default function CounterOfferModal({ offer, onClose }) {
   const [message, setMessage] = useState('')
   const [deliveryMethod, setDeliveryMethod] = useState(offer.delivery_method || 'lgs')
 
-  // Load the original sender's binder (those are the cards we can offer back)
+  // Load MY binder — these are cards I can offer
   const { data: binderData, isLoading } = useQuery({
     queryKey: ['binder', 'mine'],
-    queryFn: () => api.get('/binder/', { params: { per_page: 100 } }).then(r => r.data),
+    queryFn: () => api.get('/binder/', { params: { per_page: 100, tradeable_only: true } }).then(r => r.data),
   })
 
   const counterMutation = useMutation({
@@ -52,6 +52,10 @@ export default function CounterOfferModal({ offer, onClose }) {
 
   const myCards = binderData?.items || []
 
+  // What the original sender offered me
+  const theirOfferedItems = offer.offered_items || []
+  const theirCash = offer.cash_add_on || 0
+
   return (
     <div style={overlay} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={modal}>
@@ -61,31 +65,61 @@ export default function CounterOfferModal({ offer, onClose }) {
         </div>
 
         <div style={body}>
-          {/* What they want stays the same */}
-          <div style={section}>
-            <div style={sectionLabel}>They still want</div>
-            {offer.target_entry && (
-              <div style={cardRow}>
-                {offer.target_entry.image_uri && (
-                  <img src={offer.target_entry.image_uri} alt={offer.target_entry.card_name} style={thumb} />
-                )}
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--white)' }}>{offer.target_entry.card_name}</div>
-                  {offer.target_entry.price_usd && (
-                    <div style={{ fontSize: 12, color: 'var(--teal)' }}>${Number(offer.target_entry.price_usd).toFixed(2)}</div>
-                  )}
-                </div>
+
+          {/* Context: show the original offer so user knows what they're countering */}
+          <div style={contextBox}>
+            <div style={contextLabel}>Original offer from {offer.sender?.handle}</div>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {/* What they want (target card) */}
+              <div style={contextCol}>
+                <div style={contextColLabel}>They want</div>
+                {offer.target_entry ? (
+                  <div style={cardRow}>
+                    {offer.target_entry.image_uri && (
+                      <img src={offer.target_entry.image_uri} alt={offer.target_entry.card_name} style={thumb} />
+                    )}
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--white)' }}>{offer.target_entry.card_name}</div>
+                      {offer.target_entry.price_usd && (
+                        <div style={{ fontSize: 11, color: 'var(--teal)' }}>${Number(offer.target_entry.price_usd).toFixed(2)}</div>
+                      )}
+                    </div>
+                  </div>
+                ) : <span style={{ fontSize: 12, color: 'var(--grey)' }}>—</span>}
               </div>
-            )}
+
+              {/* What they offered */}
+              <div style={contextCol}>
+                <div style={contextColLabel}>They offered</div>
+                {theirOfferedItems.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {theirOfferedItems.map(item => (
+                      <div key={item.id} style={{ fontSize: 12, color: 'var(--white-dim)' }}>• {item.card_name}</div>
+                    ))}
+                    {theirCash > 0 && (
+                      <div style={{ fontSize: 12, color: 'var(--teal)' }}>+ ${Number(theirCash).toFixed(2)} cash</div>
+                    )}
+                  </div>
+                ) : <span style={{ fontSize: 12, color: 'var(--grey)' }}>No cards</span>}
+              </div>
+            </div>
           </div>
 
-          {/* Pick cards from your binder to offer */}
+          {/* Divider */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+            <div style={sectionLabel}>Your counter — what you'll offer instead</div>
+          </div>
+
+          {/* Pick cards from my binder */}
           <div style={section}>
-            <div style={sectionLabel}>Your offer — select cards from your binder</div>
+            <div style={{ fontSize: 12, color: 'var(--grey)', marginBottom: 4 }}>
+              Select cards from your binder to offer in exchange for{' '}
+              <strong style={{ color: 'var(--white-dim)' }}>{offer.target_entry?.card_name}</strong>
+            </div>
             {isLoading ? (
               <div style={{ fontSize: 13, color: 'var(--grey)' }}>Loading your binder…</div>
             ) : myCards.length === 0 ? (
-              <div style={{ fontSize: 13, color: 'var(--grey)' }}>No cards in your binder</div>
+              <div style={{ fontSize: 13, color: 'var(--grey)' }}>No tradeable cards in your binder</div>
             ) : (
               <div style={cardGrid}>
                 {myCards.map(card => {
@@ -107,9 +141,10 @@ export default function CounterOfferModal({ offer, onClose }) {
                         {card.card_name}
                       </div>
                       <div style={{ fontSize: 9, color: 'var(--grey)' }}>{card.condition}</div>
-                      {selected && (
-                        <div style={selectedBadge}>✓</div>
+                      {card.price_usd && (
+                        <div style={{ fontSize: 9, color: 'var(--teal)' }}>${Number(card.price_usd).toFixed(2)}</div>
                       )}
+                      {selected && <div style={selectedBadge}>✓</div>}
                     </button>
                   )
                 })}
@@ -161,7 +196,7 @@ export default function CounterOfferModal({ offer, onClose }) {
             <textarea
               className="input"
               rows={2}
-              placeholder="Add a note to your counter offer…"
+              placeholder="Explain your counter offer…"
               value={message}
               onChange={e => setMessage(e.target.value)}
               style={{ resize: 'none', fontSize: 13 }}
@@ -199,7 +234,7 @@ const modal = {
   background: 'var(--card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-md)',
-  width: '100%', maxWidth: 560,
+  width: '100%', maxWidth: 580,
   maxHeight: '90vh',
   display: 'flex', flexDirection: 'column',
   overflow: 'hidden',
@@ -230,13 +265,26 @@ const sectionLabel = {
   fontSize: 11, fontWeight: 600, color: 'var(--grey)',
   textTransform: 'uppercase', letterSpacing: '0.06em',
 }
-const cardRow = { display: 'flex', alignItems: 'center', gap: 10 }
-const thumb = { width: 40, height: 56, objectFit: 'cover', borderRadius: 4 }
+const contextBox = {
+  background: 'var(--navy)',
+  border: '1px solid var(--border)',
+  borderRadius: 8,
+  padding: '12px 14px',
+  display: 'flex', flexDirection: 'column', gap: 10,
+}
+const contextLabel = {
+  fontSize: 11, fontWeight: 600, color: 'var(--grey)',
+  textTransform: 'uppercase', letterSpacing: '0.06em',
+}
+const contextCol = { display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }
+const contextColLabel = { fontSize: 10, color: 'var(--grey)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }
+const cardRow = { display: 'flex', alignItems: 'center', gap: 8 }
+const thumb = { width: 36, height: 50, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }
 const cardGrid = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
   gap: 8,
-  maxHeight: 220,
+  maxHeight: 240,
   overflowY: 'auto',
 }
 const cardBtn = {

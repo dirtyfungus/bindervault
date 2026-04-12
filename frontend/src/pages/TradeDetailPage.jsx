@@ -73,18 +73,33 @@ export default function TradeDetailPage() {
   if (!offer) return <div style={loadingStyle}>Trade not found</div>
 
   const isSender = offer.sender_id === me?.id
+  const isReceiver = offer.receiver_id === me?.id
   const other = isSender ? offer.receiver : offer.sender
+
+  // Who can act on a countered offer?
+  // When status is 'countered', a NEW counter offer was created with sender/receiver swapped.
+  // The original sender is now the receiver of the counter — they need to accept/decline/counter.
+  // The original receiver (who countered) just waits.
+  const isCountered = offer.status === 'countered'
+  const canActOnPending = offer.status === 'pending' && isReceiver
+  const canActOnCounter = isCountered && isSender // original sender receives the counter
+
   const isDeliveryLgs = offer.delivery_method === 'lgs'
   const iAmConfirmed = isSender ? schedule?.confirmed_sender : schedule?.confirmed_receiver
   const bothConfirmed = schedule?.confirmed_sender && schedule?.confirmed_receiver
 
-  // Grid is dynamic — two columns only when accepted (schedule panel exists)
   const grid = {
     display: 'grid',
     gridTemplateColumns: offer.status === 'accepted' ? '1fr 380px' : '1fr',
     gap: 16,
     alignItems: 'start',
   }
+
+  // Determine labels based on perspective
+  const theyGiveLabel = isSender ? "They're giving" : "You're giving"
+  const youGiveLabel = isSender ? "You're giving" : "They're giving"
+  const theyGiveEntry = isSender ? offer.target_entry : null
+  const youGiveItems = isSender ? offer.offered_items : offer.offered_items
 
   return (
     <>
@@ -102,7 +117,7 @@ export default function TradeDetailPage() {
         </div>
 
         <div style={grid}>
-          {/* LEFT COLUMN — trade details + chat always visible */}
+          {/* LEFT COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={card}>
               <h2 style={sectionTitle}>Trade details</h2>
@@ -115,16 +130,33 @@ export default function TradeDetailPage() {
                   <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--white)' }}>{other?.handle}</div>
                   <div style={{ fontSize: 11, color: 'var(--grey)' }}>Trading partner</div>
                 </div>
-                <span style={{ ...statusBadge, background: '#00d4c820', borderColor: '#00d4c840', color: 'var(--teal)', marginLeft: 'auto' }}>
-                  {offer.status}
+                <span style={{
+                  ...statusBadge,
+                  background: statusColors[offer.status]?.bg || '#00d4c820',
+                  borderColor: statusColors[offer.status]?.border || '#00d4c840',
+                  color: statusColors[offer.status]?.text || 'var(--teal)',
+                  marginLeft: 'auto',
+                }}>
+                  {offer.status === 'countered' ? '↩ Countered' : offer.status}
                 </span>
               </div>
 
+              {/* Counter offer context banner */}
+              {isCountered && (
+                <div style={counterBanner}>
+                  {canActOnCounter
+                    ? '↩ The other party has countered this offer. Review and respond below.'
+                    : '⏳ You sent a counter offer. Waiting for the other party to respond.'
+                  }
+                </div>
+              )}
+
+              {/* Trade items */}
               <div style={row}>
                 <div style={col}>
                   <div style={colLabel}>They're giving</div>
                   {offer.target_entry && (
-                    <div style={cardRow}>
+                    <div style={cardRowStyle}>
                       {offer.target_entry.image_uri && (
                         <img src={offer.target_entry.image_uri} style={thumbImg} alt={offer.target_entry.card_name} />
                       )}
@@ -139,7 +171,9 @@ export default function TradeDetailPage() {
                 <div style={col}>
                   <div style={colLabel}>You're giving</div>
                   {offer.offered_items.map(item => (
-                    <div key={item.id} style={{ fontSize: 13, color: 'var(--white-dim)', marginBottom: 4 }}>• {item.card_name} ×{item.quantity}</div>
+                    <div key={item.id} style={{ fontSize: 13, color: 'var(--white-dim)', marginBottom: 4 }}>
+                      • {item.card_name} ×{item.quantity}
+                    </div>
                   ))}
                   {offer.cash_add_on > 0 && (
                     <div style={{ fontSize: 13, color: 'var(--teal)' }}>+ ${Number(offer.cash_add_on).toFixed(2)} cash</div>
@@ -154,17 +188,45 @@ export default function TradeDetailPage() {
                 </div>
               )}
 
-              {/* Actions */}
-              {offer.status === 'pending' && !isSender && (
+              {/* Actions for pending offers — only receiver can act */}
+              {canActOnPending && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-                  <button className="btn btn-primary" onClick={() => respondMutation.mutate({ action: 'accept' })}>Accept trade</button>
-                  <button className="btn btn-ghost" onClick={() => setShowCounterModal(true)}>Counter</button>
-                  <button className="btn btn-danger" onClick={() => setShowDeclineModal(true)}>Decline</button>
+                  <button className="btn btn-primary" onClick={() => respondMutation.mutate({ action: 'accept' })}>
+                    Accept trade
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => setShowCounterModal(true)}>
+                    Counter
+                  </button>
+                  <button className="btn btn-danger" onClick={() => setShowDeclineModal(true)}>
+                    Decline
+                  </button>
                 </div>
               )}
-              {offer.status === 'pending' && isSender && (
-                <button className="btn btn-danger" style={{ marginTop: 20 }} onClick={() => respondMutation.mutate({ action: 'cancel' })}>Cancel offer</button>
+
+              {/* Actions for countered offers — original sender now responds */}
+              {canActOnCounter && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+                  <button className="btn btn-primary" onClick={() => respondMutation.mutate({ action: 'accept' })}>
+                    Accept counter
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => setShowCounterModal(true)}>
+                    Counter back
+                  </button>
+                  <button className="btn btn-danger" onClick={() => setShowDeclineModal(true)}>
+                    Decline
+                  </button>
+                </div>
               )}
+
+              {/* Sender can cancel a pending offer */}
+              {offer.status === 'pending' && isSender && (
+                <button className="btn btn-danger" style={{ marginTop: 20 }}
+                  onClick={() => respondMutation.mutate({ action: 'cancel' })}>
+                  Cancel offer
+                </button>
+              )}
+
+              {/* Complete button when both confirmed */}
               {offer.status === 'accepted' && bothConfirmed && (
                 <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => completeMutation.mutate()}>
                   <CheckCircle size={14} /> Mark as completed
@@ -254,7 +316,7 @@ export default function TradeDetailPage() {
       )}
 
       {showDeclineModal && (
-        <div style={overlay} onClick={e => e.target === e.currentTarget && setShowDeclineModal(false)}>
+        <div style={overlayStyle} onClick={e => e.target === e.currentTarget && setShowDeclineModal(false)}>
           <div style={declineModal}>
             <div style={modalHeader}>
               <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--white)' }}>Decline trade</span>
@@ -291,23 +353,33 @@ export default function TradeDetailPage() {
   )
 }
 
+const statusColors = {
+  pending: { bg: '#00d4c820', border: '#00d4c840', text: 'var(--teal)' },
+  countered: { bg: '#f6ad5520', border: '#f6ad5540', text: '#f6ad55' },
+  accepted: { bg: '#48bb7820', border: '#48bb7840', text: 'var(--success)' },
+  declined: { bg: '#fc5c6520', border: '#fc5c6540', text: '#fc5c65' },
+  cancelled: { bg: '#71809620', border: '#71809640', text: 'var(--grey)' },
+  completed: { bg: '#71809620', border: '#71809640', text: 'var(--grey)' },
+}
+
 const page = { padding: '24px 28px', overflowY: 'auto', height: '100%' }
 const headerRow = { display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }
 const card = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: 20 }
 const sectionTitle = { fontSize: 14, fontWeight: 600, color: 'var(--white)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }
 const avatar = { width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: 'var(--navy)', flexShrink: 0 }
 const statusBadge = { fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, border: '1px solid', textTransform: 'uppercase', letterSpacing: '0.04em' }
+const counterBanner = { fontSize: 13, color: '#f6ad55', background: '#f6ad5510', border: '1px solid #f6ad5530', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }
 const row = { display: 'flex', gap: 16, alignItems: 'flex-start' }
 const col = { flex: 1 }
 const colLabel = { fontSize: 11, color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }
-const cardRow = { display: 'flex', alignItems: 'center', gap: 10 }
+const cardRowStyle = { display: 'flex', alignItems: 'center', gap: 10 }
 const thumbImg = { width: 40, height: 56, objectFit: 'cover', borderRadius: 4 }
 const scheduleRow = { display: 'flex', gap: 10, marginBottom: 8, fontSize: 13, color: 'var(--white-dim)' }
 const scheduleLabel = { fontSize: 11, color: 'var(--grey)', width: 60, flexShrink: 0 }
 const confirmChip = { fontSize: 11, padding: '4px 12px', borderRadius: 20, border: '1px solid', fontWeight: 500 }
 const inputLabel = { display: 'block', fontSize: 11, color: 'var(--grey)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }
 const loadingStyle = { padding: 40, color: 'var(--grey)', textAlign: 'center' }
-const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }
+const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }
 const declineModal = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', width: '100%', maxWidth: 440, overflow: 'hidden' }
 const modalHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--border)' }
 const closeBtn = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey)', display: 'flex', alignItems: 'center' }
